@@ -9,9 +9,9 @@ const CreateMeeting = () => {
   const [email, setEmail] = useState("");
   const { createMeeting } = useHost();
 
+  // creates meeting
   const handleCreateMeeting = (event: FormEvent) => {
     event?.preventDefault();
-    alert("Create meeting!");
     console.log(import.meta);
     console.log(import.meta.env);
     const ws = new WebSocket(SIGNALING_SERVER);
