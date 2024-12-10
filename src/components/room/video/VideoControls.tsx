@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { AiFillAudio, AiOutlineAudioMuted } from "react-icons/ai";
 import {
   HiOutlineVideoCamera,

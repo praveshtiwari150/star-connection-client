@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import  { useMemo } from "react";
 import { Participant } from "../../utils/constant";
 import { FaRegCheckCircle } from "react-icons/fa";
 import { RiCloseCircleLine } from "react-icons/ri";
@@ -6,12 +6,10 @@ import { useHost } from "../../context/HostProvider";
 
 interface ParticipantProps {
   participants: Participant[];
-  isParticipantComp?: boolean;
 }
 
 const Participants = ({
   participants,
-  isParticipantComp,
 }: ParticipantProps) => {
   const { acceptParticipant, removeAndUpdateParticipant } = useHost();
   const accepted = useMemo(() => {

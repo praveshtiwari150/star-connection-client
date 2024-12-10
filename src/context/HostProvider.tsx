@@ -1,6 +1,5 @@
 import React, {useContext, useEffect, useState } from "react";
 import { useMedia } from "./StreamProvider";
-import { SiOcaml } from "react-icons/si";
 
 interface HostProviderProps {
   children: React.ReactNode;

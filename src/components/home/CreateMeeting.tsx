@@ -12,8 +12,7 @@ const CreateMeeting = () => {
   // creates meeting
   const handleCreateMeeting = (event: FormEvent) => {
     event?.preventDefault();
-    console.log(import.meta);
-    console.log(import.meta.env);
+    console.log("meeting is creating");
     const ws = new WebSocket(SIGNALING_SERVER);
     ws.onopen = () => {
       console.log("Socket connection opened at create meeting");

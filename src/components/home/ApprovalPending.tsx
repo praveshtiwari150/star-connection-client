@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { usePeer } from "../../context/PeerProvider";
 import { Link, useNavigate } from "react-router-dom";
 import Spinner from "./Spinner";

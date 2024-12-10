@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { SIGNALING_SERVER } from "../../utils/constant";
 import { usePeer } from "../../context/PeerProvider";
 
@@ -7,7 +6,6 @@ const JoinMeeting = () => {
   const [name, setName] = useState("");
   const [sessionId, setSessionId] = useState("");
   const { sendJoinRequest } = usePeer();
-  const navigate = useNavigate();
 
   const handleJoinMeeting = (event: any) => {
     event.preventDefault();

@@ -10,11 +10,10 @@ interface Participant {
 }
 
 interface ParticipantProps {
-  isVideoTile?: boolean;
   participants: Participant[];
 }
 
-const VideoTile = ({ isVideoTile, participants }: ParticipantProps) => {
+const VideoTile = ({  participants }: ParticipantProps) => {
   // Filter accepted participants
   const acceptedParticipants = useMemo(() => {
     return participants.filter((p) => p.status === "accepted");

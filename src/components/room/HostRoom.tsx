@@ -70,7 +70,7 @@ const HostRoom = () => {
 
       {isVideoTile && (
         <div className="max-h-screen bg-charcoal-6 p-1 rounded-lg  lg:col-span-2">
-          <VideoTile isVideoTile={isVideoTile} participants={participants} />
+          <VideoTile participants={participants} />
         </div>
       )}
 
@@ -81,7 +81,6 @@ const HostRoom = () => {
           }`}
         >
           <Participants
-            isParticipantComp={isParticipantComp}
             participants={participants}
           />
         </aside>
