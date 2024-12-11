@@ -29,7 +29,7 @@ const CreateMeeting = () => {
     };
 
     ws.onclose = () => {
-      console.log("create meeting WebSocket connection closed");
+      console.log("WebSocket connection closed");
     };
   };
 
