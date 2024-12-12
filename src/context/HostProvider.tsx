@@ -1,5 +1,7 @@
 import React, {useContext, useEffect, useState } from "react";
 import { useMedia } from "./StreamProvider";
+import { SIGNALING_SERVER } from "../utils/constant";
+import { useNavigate } from "react-router-dom";
 
 interface HostProviderProps {
   children: React.ReactNode;
@@ -21,10 +23,8 @@ interface HostContextType {
   hostWs: WebSocket | null;
   participants: Participant[];
   createMeeting: (
-    sessionId: string,
     hostName: string,
     hostEmail: string,
-    ws: WebSocket
   ) => void;
   handleParticipantJoinRequest: (peerId: string, peerName: string) => void;
   acceptParticipant: (peerId: string) => void;
@@ -41,15 +41,20 @@ export const HostProvider = ({ children }: HostProviderProps) => {
   const [hostWs, setHostWs] = useState<WebSocket | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const { localStream } = useMedia();
-
+  const navigate = useNavigate();
   const createMeeting = (
-    sessionId: string,
     hostName: string,
     hostEmail: string,
-    ws: WebSocket
   ) => {
+    const ws = new WebSocket(SIGNALING_SERVER);
+    if (ws) {
+      console.log("Websocket instance created.");
+    }
+
+    if(!ws){
+      console.log("Websocket instance not created.");
+    }
     setIsHost(true);
-    setSessionId(sessionId);
     setHostName(hostName);
     setHostEmail(hostEmail);
     setHostWs(ws);
@@ -170,11 +175,14 @@ export const HostProvider = ({ children }: HostProviderProps) => {
     }
   };
 
+  let count = 0;
   useEffect(() => {
+    console.log("Useffect ran: ", ++count);
     if (!hostWs) return;
 
     hostWs.onopen = () => {
-      console.log("5 Host WebSocket connection opened");
+      console.log("Host WebSocket connection opened");
+      hostWs.send(JSON.stringify({ type: "create-meeting", email: hostEmail }));
     };
 
     hostWs.onmessage = (event) => {
@@ -182,6 +190,13 @@ export const HostProvider = ({ children }: HostProviderProps) => {
       console.log("Received message:", message);
 
       switch (message.type) {
+
+        case "meeting-created":
+          const { sessionId } = message;
+          setSessionId(sessionId);
+          navigate(`/room/${sessionId}`);
+          break;
+
         case "join-request": {
           const { peerId, peerName } = message;
           console.log("Handling join request from peer:", peerId, peerName);
@@ -207,14 +222,15 @@ export const HostProvider = ({ children }: HostProviderProps) => {
       }
     };
 
-    hostWs.onerror = (error) => {
-      console.error("WebSocket error:", error);
+    hostWs.onerror = (event) => {
+      console.log("WebSocket connection error: ");
+      console.log(event);
     };
 
     hostWs.onclose = () => {
-      console.log("Peer WebSocket connection closed");
+      console.log("Host WebSocket connection closed");
     };
-  }, [hostWs, participants]);
+  }, [hostWs,createMeeting, participants]);
 
   const value = {
     isHost,

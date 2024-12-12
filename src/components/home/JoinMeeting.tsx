@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { SIGNALING_SERVER } from "../../utils/constant";
 import { usePeer } from "../../context/PeerProvider";
 
 const JoinMeeting = () => {
@@ -9,8 +8,8 @@ const JoinMeeting = () => {
 
   const handleJoinMeeting = (event: any) => {
     event.preventDefault();
-    const ws = new WebSocket(SIGNALING_SERVER);
-    sendJoinRequest(name, sessionId, ws);
+    console.log("Sending request to join meeting");
+    sendJoinRequest(name, sessionId);
   };
 
   return (

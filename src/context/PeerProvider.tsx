@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMedia } from "./StreamProvider";
-
+import { SIGNALING_SERVER } from "../utils/constant";
 interface PeerProviderProps {
   children: React.ReactNode;
 }
@@ -14,7 +14,7 @@ interface PeerContextType {
   peerSocket: WebSocket | null;
   pc: RTCPeerConnection | null;
   hostStream: MediaStream | null;
-  sendJoinRequest: (name: string, sessionId: string, ws: WebSocket) => void;
+  sendJoinRequest: (name: string, sessionId: string) => void;
 }
 
 const PeerContext = React.createContext<PeerContextType | null>(null);
@@ -32,7 +32,9 @@ export const PeerProvider = ({ children }: PeerProviderProps) => {
   const [hostStream, setHostStream] = useState<MediaStream | null>(null);
   const { localStream } = useMedia();
 
-  const sendJoinRequest = (name: string, sessionId: string, ws: WebSocket) => {
+  const sendJoinRequest = (name: string, sessionId: string) => {
+    const ws = new WebSocket(SIGNALING_SERVER);
+
     setpeerSocket(ws);
     setSessionId(sessionId);
     setPeerName(name);
@@ -47,6 +49,10 @@ export const PeerProvider = ({ children }: PeerProviderProps) => {
       );
       navigate(`/approval/${sessionId}`);
     };
+
+    ws.onclose = () => {
+      console.log("Socket connection closed");
+    }
   };
 
   const handleParticipantAdded = async (message: any) => {

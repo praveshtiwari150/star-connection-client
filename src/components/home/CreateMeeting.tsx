@@ -1,10 +1,7 @@
 import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useHost } from "../../context/HostProvider";
-import { SIGNALING_SERVER } from "../../utils/constant";
 
 const CreateMeeting = () => {
-  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const { createMeeting } = useHost();
@@ -12,25 +9,8 @@ const CreateMeeting = () => {
   // creates meeting
   const handleCreateMeeting = (event: FormEvent) => {
     event?.preventDefault();
-    console.log("meeting is creating");
-    const ws = new WebSocket(SIGNALING_SERVER);
-    ws.onopen = () => {
-      console.log("Socket connection opened at create meeting");
-      ws.send(JSON.stringify({ type: "create-meeting", email }));
-    };
-
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === "meeting-created") {
-        const { sessionId } = message;
-        createMeeting(sessionId, name, email, ws);
-        navigate(`/room/${sessionId}`);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
+    console.log('createMeeting')
+    createMeeting(name, email);
   };
 
   return (
