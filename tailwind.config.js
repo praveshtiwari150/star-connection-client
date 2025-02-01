@@ -77,11 +77,7 @@ export default {
           '9': '#CECECE',  // Pearl White
           '10': '#C8C8C8'  // Ivory White
         }
-
-
-
       },
-
     },
   },
   plugins: [],

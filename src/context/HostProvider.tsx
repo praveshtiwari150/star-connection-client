@@ -1,5 +1,4 @@
-import React, {useContext, useEffect, useState } from "react";
-import { useMedia } from "./StreamProvider";
+import React, { useContext, useEffect, useState } from "react";
 import { SIGNALING_SERVER } from "../utils/constant";
 import { useNavigate } from "react-router-dom";
 
@@ -11,8 +10,16 @@ interface Participant {
   peerId: string;
   peerName: string;
   status: "accepted" | "pending";
-  pc?: RTCPeerConnection | null;
-  stream?: MediaStream | null;
+  pc: RTCPeerConnection | null;
+  dc: RTCDataChannel | null;
+  stream: MediaStream | null;
+}
+
+interface Message {
+  text: string;
+  name: string;
+  timestamp: number;
+  peerId: string | null;
 }
 
 interface HostContextType {
@@ -21,14 +28,23 @@ interface HostContextType {
   hostEmail: string | null;
   sessionId: string | null;
   hostWs: WebSocket | null;
+  hostStream: MediaStream | null;
+  setHostStream: React.Dispatch<React.SetStateAction<MediaStream | null>>;
+  screenStream: MediaStream | null;
+  setScreenStream: React.Dispatch<React.SetStateAction<MediaStream | null>>;
+  isScreenSharingEnabled: boolean;
   participants: Participant[];
-  createMeeting: (
-    hostName: string,
-    hostEmail: string,
-  ) => void;
+  startShareScreen: () => Promise<void>;
+  stopShareScreen: (stream: MediaStream) => void;
+  createMeeting: (hostName: string, hostEmail: string) => void;
   handleParticipantJoinRequest: (peerId: string, peerName: string) => void;
   acceptParticipant: (peerId: string) => void;
   removeAndUpdateParticipant: (peerId: string) => void;
+  terminateSession: (flag: boolean) => void;
+  messages: Message[];
+  inputMessage: string;
+  setInputMessage: React.Dispatch<React.SetStateAction<string>>;
+  handleSendMessage: () => void;
 }
 
 const HostContext = React.createContext<HostContextType | null>(null);
@@ -40,18 +56,17 @@ export const HostProvider = ({ children }: HostProviderProps) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [hostWs, setHostWs] = useState<WebSocket | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const { localStream } = useMedia();
+  const [hostStream, setHostStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [isScreenSharingEnabled, setIsScreenSharingEnabled] = useState<boolean>(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputMessage, setInputMessage] = useState<string>("");
+  
   const navigate = useNavigate();
-  const createMeeting = (
-    hostName: string,
-    hostEmail: string,
-  ) => {
-    const ws = new WebSocket(SIGNALING_SERVER);
-    if (ws) {
-      console.log("Websocket instance created.");
-    }
 
-    if(!ws){
+  const createMeeting = (hostName: string, hostEmail: string) => {
+    const ws = new WebSocket(SIGNALING_SERVER);
+    if (!ws) {
       console.log("Websocket instance not created.");
     }
     setIsHost(true);
@@ -63,16 +78,22 @@ export const HostProvider = ({ children }: HostProviderProps) => {
   const handleParticipantJoinRequest = (peerId: string, peerName: string) => {
     setParticipants((prev) => [
       ...prev,
-      { peerId, peerName, status: "pending", pc: null, stream: null },
+      { peerId, peerName, status: "pending", pc: null, dc: null, stream: null },
     ]);
   };
 
   const acceptParticipant = async (peerId: string) => {
     const pc = new RTCPeerConnection();
+    const dc = pc.createDataChannel("streamdata");
+
+    setParticipants((prevParticipants) =>
+      prevParticipants.map((p) =>
+        p.peerId === peerId ? { ...p, status: "accepted", pc, dc } : p
+      )
+    );
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        console.log("Sending ice-candidate");
         hostWs?.send(
           JSON.stringify({
             type: "ice-candidate",
@@ -87,10 +108,10 @@ export const HostProvider = ({ children }: HostProviderProps) => {
     };
 
     pc.ontrack = (event) => {
-      console.log("Receiving particiapnt stream");
+      const newStream = event.streams[0];
       setParticipants((prevParticipants) =>
         prevParticipants.map((p) =>
-          p.peerId === peerId ? { ...p, stream: event.streams[0] } : p
+          p.peerId === peerId ? { ...p, stream: newStream } : p
         )
       );
     };
@@ -98,18 +119,24 @@ export const HostProvider = ({ children }: HostProviderProps) => {
     const participant = participants.find((p) => p.peerId === peerId);
 
     if (participant) {
-      console.log("Participant exists");
       try {
-        if (localStream) {
-          localStream.getTracks().forEach((track) => {
-            pc.addTrack(track, localStream);
+        // adding the host's stream to the new participant
+        if (hostStream) {
+          hostStream.getTracks().forEach((track) => {
+            pc.addTrack(track, hostStream);
+          });
+        }
+
+        // share screen
+        if (screenStream && isScreenSharingEnabled) {
+          screenStream.getTracks().forEach((track) => {
+            pc.addTrack(track, screenStream);
           });
         }
 
         const offer = await pc.createOffer();
-        console.log("offer created and stored in the local description");
         await pc.setLocalDescription(offer);
-        console.log("Sending offer to the participant");
+        console.log("Sending initial offer to the host");
         hostWs?.send(
           JSON.stringify({
             type: "participant-added",
@@ -118,18 +145,74 @@ export const HostProvider = ({ children }: HostProviderProps) => {
             sdp: offer,
           })
         );
-
-        setParticipants((prevParticipants) =>
-          prevParticipants.map((p) =>
-            p.peerId === peerId ? { ...p, status: "accepted", pc } : p
-          )
-        );
-
-        console.log("Collecting ice candidate");
       } catch (err) {
         console.log(err);
       }
     }
+  };
+
+  const startShareScreen = async () => {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+      const track = screenStream.getVideoTracks()[0];
+
+      participants.forEach(async (participant) => {
+        if (participant.pc && screenStream) {
+          screenStream.getTracks().forEach((track) => {
+            participant.pc?.addTrack(track, screenStream);
+          });
+
+          const offer = await participant.pc.createOffer();
+          await participant.pc.setLocalDescription(offer);
+          hostWs?.send(
+            JSON.stringify({
+              type: "offer",
+              peerId: participant.peerId,
+              sessionId,
+              sdp: offer,
+            })
+          );
+        }
+      });
+
+      setScreenStream(screenStream);
+      setIsScreenSharingEnabled(true);
+
+      track.onended = () => {
+        stopShareScreen(screenStream);
+      };
+    } catch (err) {
+      console.log("Error accessing screenStream  ", err);
+    }
+  };
+
+  const stopShareScreen = (stream: MediaStream) => {
+    const trackId = stream.getTracks()[0].id;
+    hostWs?.send(
+      JSON.stringify({
+        type: "stop-screen-stream",
+        sessionId,
+        trackId,
+      })
+    );
+
+    stream.getTracks().forEach(track => track.stop());
+
+    participants.forEach(participant => {
+      if (participant.pc) {
+        const sender = participant.pc.getSenders().find(s => s.track && s.track.kind === "video" && s.track.id === trackId);
+
+        if (sender) {
+          sender.replaceTrack(null);
+        }
+      }
+    })
+    setIsScreenSharingEnabled(false);
+    setScreenStream(null);
+    
   };
 
   const removeAndUpdateParticipant = (peerId: string) => {
@@ -146,18 +229,14 @@ export const HostProvider = ({ children }: HostProviderProps) => {
     const { peerId, sdp } = message;
     const participant = participants.find((p) => p.peerId === peerId);
     if (participant) {
-      console.log("Participant found");
       const { pc } = participant;
       if (pc) {
-        console.log("Participant has pc");
-        console.log(pc);
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
       } else {
         console.log("pc not found for the participant");
       }
     } else {
       console.log("Participant not found");
-      console.log("particiapnts array size is: ", participants.length);
     }
   };
 
@@ -171,13 +250,88 @@ export const HostProvider = ({ children }: HostProviderProps) => {
       }
     } else {
       console.log("Participant not found");
-      console.log("Participant array size: ", participants.length);
     }
   };
 
-  let count = 0;
+  const handleCloseConnection = async (message: any) => {
+    const { peerId } = message;
+    const participant = participants.find((p) => p.peerId === peerId);
+    if (!participant) return;
+    if (participant.pc) {
+      participant.pc.getSenders().forEach((sender) => {
+        participant.pc?.removeTrack(sender);
+      });
+      participant.pc.close();
+    }
+
+    setParticipants((prev) => prev.filter((p) => p.peerId !== peerId));
+  };
+
+  const terminateSession = (flag: boolean) => {
+    if (hostWs?.readyState === WebSocket.OPEN) {
+      hostWs?.send(
+        JSON.stringify({
+          type: "close-connection",
+          from: "host",
+          sessionId,
+        })
+      );
+
+      hostWs?.close();
+    }
+    if (participants) {
+      participants.forEach((participant) => {
+        if (participant.pc && participant.pc.signalingState !== "closed") {
+          participant.pc.getSenders().forEach((sender) => {
+            participant.pc?.removeTrack(sender);
+          });
+          participant.pc.close();
+        }
+      });
+    }
+
+    if (hostStream) {
+      hostStream.getTracks().forEach((track) => track.stop());
+    }
+
+    if (screenStream) {
+      screenStream.getTracks().forEach((track) => track.stop());
+    }
+
+    setHostEmail(null);
+    setHostName(null);
+    setSessionId(null);
+    setHostWs(null);
+    setParticipants([]);
+    setHostStream(null);
+    setScreenStream(null);
+    setIsScreenSharingEnabled(false);
+    setIsHost(false);
+    setMessages([]);
+    if (!flag) navigate("/");
+  };
+
+  const handleSendMessage = () => {
+    if (inputMessage.trim()) {
+      hostWs?.send(JSON.stringify({
+        type: "live-chat",
+        text: inputMessage,
+        name: "Host",
+        timestamp: Date.now(),
+        peerId: null,
+        sessionId
+      }))
+    }
+    setInputMessage("");
+  }
+
+  const handleLiveChat = (message: any) => {
+    const { text, name, timestamp, peerId } = message;
+    setMessages(prev => [...prev, { text, name, timestamp, peerId }]);
+  }
+
+
   useEffect(() => {
-    console.log("Useffect ran: ", ++count);
     if (!hostWs) return;
 
     hostWs.onopen = () => {
@@ -187,10 +341,8 @@ export const HostProvider = ({ children }: HostProviderProps) => {
 
     hostWs.onmessage = (event) => {
       const message = JSON.parse(event.data);
-      console.log("Received message:", message);
 
       switch (message.type) {
-
         case "meeting-created":
           const { sessionId } = message;
           setSessionId(sessionId);
@@ -199,38 +351,45 @@ export const HostProvider = ({ children }: HostProviderProps) => {
 
         case "join-request": {
           const { peerId, peerName } = message;
-          console.log("Handling join request from peer:", peerId, peerName);
           handleParticipantJoinRequest(peerId, peerName);
           break;
         }
         case "answer":
+          console.log("Answer recieved");
           handleAnswer(message);
           break;
 
         case "ice-candidate":
           handleIceCandidate(message);
           break;
+        
+        case "live-chat":
+          handleLiveChat(message)
+          break;
 
         case "participant-rejected": {
           const { peerId } = message;
-          console.log("Participant rejected:", peerId);
           removeAndUpdateParticipant(peerId);
           break;
         }
+
+        case "close-connection":
+          handleCloseConnection(message);
+          break;
+
         default:
           console.warn("Unhandled message type:", message.type);
       }
     };
 
-    hostWs.onerror = (event) => {
+    hostWs.onerror = () => {
       console.log("WebSocket connection error: ");
-      console.log(event);
     };
 
     hostWs.onclose = () => {
       console.log("Host WebSocket connection closed");
     };
-  }, [hostWs,createMeeting, participants]);
+  }, [hostWs, createMeeting, participants]);
 
   const value = {
     isHost,
@@ -238,11 +397,23 @@ export const HostProvider = ({ children }: HostProviderProps) => {
     hostEmail,
     sessionId,
     hostWs,
+    hostStream,
+    setHostStream,
+    screenStream,
+    setScreenStream,
+    isScreenSharingEnabled,
     participants,
+    startShareScreen,
+    stopShareScreen,
     createMeeting,
     handleParticipantJoinRequest,
     acceptParticipant,
     removeAndUpdateParticipant,
+    terminateSession,
+    messages,
+    inputMessage,
+    setInputMessage,
+    handleSendMessage,
   };
 
   return <HostContext.Provider value={value}>{children}</HostContext.Provider>;

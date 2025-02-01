@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Spinner from "./Spinner";
 
 const ApprovalPending = () => {
-  const { peerName, status, sessionId } = usePeer();
+  const { peerName, status, sessionId} = usePeer();
   const navigate = useNavigate();
   console.log("Inside ApprovalPending: ", status);
 
@@ -12,7 +12,7 @@ const ApprovalPending = () => {
     if (status === "accepted") {
       navigate(`/${sessionId}`);
     }
-  }, [status, sessionId, navigate]);
+  }, [status]);
   return (
     <div className="flex flex-col gap-2 justify-center items-center w-full h-[100vh]">
       {status === "pending" && (

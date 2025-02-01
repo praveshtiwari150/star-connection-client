@@ -1,12 +1,15 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef,memo } from "react";
 
 interface VideoDisplayProps {
+  onDoubleClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
   stream: MediaStream | null;
+  className?: string;
+  videoStyle?: string;
+  key?: string | number;
 }
 
-const VideoDisplay = ({ stream }: VideoDisplayProps) => {
+const VideoDisplay = memo(({key, className,videoStyle, stream, onDoubleClick }: VideoDisplayProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-
   useEffect(() => {
     if (stream && videoRef.current) {
       videoRef.current.srcObject = stream;
@@ -14,20 +17,16 @@ const VideoDisplay = ({ stream }: VideoDisplayProps) => {
   }, [stream]);
 
   return (
-    <div>
-      {stream ? (
-        <video
-          className="w-full h-[80px] md:h-[220px] lg:h-[400px] rounded-lg"
-          ref={videoRef}
-          muted
-          autoPlay
-          playsInline
-        />
-      ) : (
-        <div>Cannot find stream</div>
-      )}
+    <div key={key} onDoubleClick={onDoubleClick} className={className}>
+      <video
+        className={videoStyle}
+        ref={videoRef}
+        muted
+        autoPlay
+        playsInline
+      />
     </div>
   );
-};
+});
 
 export default VideoDisplay;

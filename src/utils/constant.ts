@@ -1,12 +1,15 @@
 export const SIGNALING_SERVER = import.meta.env.VITE_SIGNALING_SERVER;
 
-export interface Participant {
+
+export interface dummyParticipant {
     peerId: string;
     peerName: string;
     status: 'accepted' | 'pending';
 }
 
-export const dummyParticipants: Participant[] = [
+
+
+export const dummyParticipants: dummyParticipant[] = [
     { peerId: '1', peerName: 'Alice', status: 'accepted' },
     { peerId: '2', peerName: 'Bob', status: 'pending' },
     { peerId: '3', peerName: 'Charlie', status: 'accepted' },

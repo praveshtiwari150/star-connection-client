@@ -1,89 +1,190 @@
 import VideoDisplay from "./video/VideoDisplay";
 import VideoControls from "./video/VideoControls";
-import VideoTile from "./video/VideoTile";
 import Participants from "./Participants";
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useHost } from "../../context/HostProvider";
-import { useMedia } from "../../context/StreamProvider";
+import ParticipantsVideo from "./video/ParticipantsVideo";
+import { RxCross2 } from "react-icons/rx";
+import { useWindowSize } from "../../hooks/getWindowSize";
+import ChatRoom from "./ChatRoom";
 
 const HostRoom = () => {
   const { sessionId } = useParams();
   const {
-    localStream,
-    videoEnabled,
-    audioEnabled,
-    getLocalStream,
-    toggleVideo,
-    toggleAudio,
-  } = useMedia();
-  const [isParticipantComp, setIsParticipantComp] = useState(false);
-  const [isVideoTile, setIsVideoTile] = useState(true);
 
-  const { participants } = useHost();
+    isHost,
+    participants,
+    hostStream,
+    setHostStream,
+    isScreenSharingEnabled,
+    terminateSession,
+    messages,
+    inputMessage,
+    setInputMessage,
+    handleSendMessage,
+  } = useHost();
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [modalType, setModalType] = useState<"participants" | "chat" | null>(
+    null
+  );
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { width } = useWindowSize();
+
+  const request = useMemo(() => {
+    if (participants) {
+      let count = 0;
+      participants.forEach((participant) => {
+        if (participant.status === "pending") {
+          count++;
+        }
+      });
+
+      return count;
+    }
+  }, [participants]);
 
   if (!sessionId) {
     throw Error("Cannot fetch sessionId from params");
   }
 
-  const toggleParticipant = () => {
-    if (isVideoTile) {
-      setIsVideoTile((prev) => !prev);
+  const getHostStream = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      setHostStream(stream);
+
+      stream
+        .getVideoTracks()
+        .forEach((track) => (track.enabled = isVideoEnabled));
+      stream
+        .getAudioTracks()
+        .forEach((track) => (track.enabled = isAudioEnabled));
+    } catch (err) {
+      console.log("Error accessing media device: ", err);
     }
-    setIsParticipantComp((prev) => !prev);
   };
 
-  const toggeleStream = () => {
-    if (isParticipantComp) {
-      setIsParticipantComp((prev) => !prev);
+  const toggleVideo = () => {
+    if (hostStream) {
+      hostStream.getVideoTracks().forEach((track) => {
+        track.enabled = !isVideoEnabled;
+      });
+      setIsVideoEnabled(!isVideoEnabled);
     }
-    setIsVideoTile((prev) => !prev);
+  };
+
+  const toggleAudio = () => {
+    if (hostStream) {
+      hostStream.getAudioTracks().forEach((track) => {
+        track.enabled = !isAudioEnabled;
+      });
+      setIsAudioEnabled(!isAudioEnabled);
+    }
+  };
+
+  const openParticipantsModal = () => {
+    setIsModalOpen(true);
+    setModalType("participants");
+  };
+
+  const openChatModal = () => {
+    setIsModalOpen(true);
+    setModalType("chat");
   };
 
   useEffect(() => {
-    getLocalStream();
+    getHostStream();
   }, []);
 
+  useEffect(() => {
+    if (width > 767) {
+      setIsModalOpen(false);
+    }
+  }, [width]);
+
   return (
-    <div className="max-h-screen bg-charcoal-10 p-4 grid gap-4 lg:grid-cols-4">
-      <div
-        className={`max-h-screen bg-charcoal-6 flex flex-col justify-center items-center gap-2 rounded-lg p-1 transition-transform duration-300 ${
-          isParticipantComp && "lg:col-span-3"
-        } ${isVideoTile && "lg:col-span-2"} ${
-          !isParticipantComp && !isVideoTile && "lg:col-span-4"
-        }`}
-      >
-        {/* VideoDisplay */}
-        <VideoDisplay stream={localStream} />
-
-        {/* VideoControls */}
-        <VideoControls
-          toggleVideo={toggleVideo}
-          toggleAudio={toggleAudio}
-          toggleParticipant={toggleParticipant}
-          toggleStream={toggeleStream}
-          videoEnabled={videoEnabled}
-          audioEnabled={audioEnabled}
-          sessionId={sessionId}
+    <div className="relative flex flex-col justify-between md:flex-row h-screen w-screen overflow-hidden">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col w-full h-full items-center justify-between overflow-hidden p-1">
+        {/* Participants Video */}
+        <ParticipantsVideo participants={participants} />
+        {/* Host's Video Stream */}
+        <VideoDisplay
+          className="flex-1 bg-charcoal-7 border border-charcoal-4 w-full px-2 h-full lg:h-full rounded-lg overflow-hidden"
+          videoStyle="w-full h-full object-fit"
+          stream={hostStream}
         />
-      </div>
-
-      {isVideoTile && (
-        <div className="max-h-screen bg-charcoal-6 p-1 rounded-lg  lg:col-span-2">
-          <VideoTile participants={participants} />
-        </div>
-      )}
-
-      {isParticipantComp && (
-        <aside
-          className={`max-h-screen flex flex-col gap-4 border rounded-lg p-4 bg-gray-100 ${
-            isParticipantComp ? "lg:col-span-1" : ""
-          }`}
-        >
-          <Participants
-            participants={participants}
+        {isScreenSharingEnabled && (
+          <div className="mr-auto ml-2 text-sm font-sans text-cobalt-4 font-light">
+            Screen Sharing Enabled
+          </div>
+        )}
+        {/* Video Controls */}
+        <div className="m-2">
+          <VideoControls
+            className="bg-charcoal-7 border border-charcoal-4  rounded-lg p-3 flex gap-2 mx-auto  justify-center items-center"
+            isHost={isHost}
+            request={request}
+            toggleVideo={toggleVideo}
+            toggleAudio={toggleAudio}
+            terminateSession={terminateSession}
+            openParticipantsModal={openParticipantsModal}
+            openChatModal={openChatModal}
+            isVideoEnabled={isVideoEnabled}
+            isAudioEnabled={isAudioEnabled}
+            sessionId={sessionId}
           />
-        </aside>
+        </div>
+      </div>
+      {/* Right Sidebar */}
+      <div className="hidden mx-2 md:flex flex-shrink-0 w-[300px] lg:w-[25%] h-full bg-charcoal-7 overflow-y-auto border-l border-charcoal-4">
+        {(modalType === "participants" || modalType === null) && (
+          <>
+            <Participants />
+          </>
+        )}
+        {modalType === "chat" && (
+          <>
+            <ChatRoom
+              isHost={isHost}
+              messages={messages}
+              inputMessage={inputMessage}
+              setInputMessage={setInputMessage}
+              handleSendMessage={handleSendMessage}
+              peerId={null}
+            />
+          </>
+        )}
+      </div>
+      {isModalOpen && width < 767 && (
+        <div className="absolute bg-opacity-90 bg-charcoal-7 w-full h-full ">
+          <RxCross2
+            onClick={() => {
+              setIsModalOpen(false);
+              setModalType(null);
+            }}
+            className="m-2 text-3xl font-extrabold hover:text-cobalt-4"
+          />
+          <div className="h-[90%]">
+            {modalType === "participants" && <Participants />}
+            {modalType === "chat" && (
+              <ChatRoom
+                isHost={isHost}
+                messages={messages}
+                peerId={null}
+                inputMessage={inputMessage}
+                setInputMessage={setInputMessage}
+                handleSendMessage={handleSendMessage}
+              />
+            )}
+          </div>
+          ;
+        </div>
       )}
     </div>
   );
