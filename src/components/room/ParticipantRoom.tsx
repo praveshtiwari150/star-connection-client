@@ -90,7 +90,6 @@ const ParticipantRoom = () => {
       {isChatOpen && (
         <div className="hidden mx-2 md:flex flex-shrink-0 w-[300px] lg:w-[25%] h-full bg-charcoal-7 overflow-y-auto border-l border-charcoal-4">
           <ChatRoom
-            isHost={false}
             messages={messages}
             inputMessage={inputMessage}
             setInputMessage={setInputMessage}
@@ -108,7 +107,6 @@ const ParticipantRoom = () => {
             className="m-2 text-3xl font-extrabold hover:text-cobalt-4"
           />
           <ChatRoom
-            isHost={false}
             messages={messages}
             inputMessage={inputMessage}
             setInputMessage={setInputMessage}

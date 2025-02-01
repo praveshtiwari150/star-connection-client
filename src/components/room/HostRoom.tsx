@@ -151,7 +151,6 @@ const HostRoom = () => {
         {modalType === "chat" && (
           <>
             <ChatRoom
-              isHost={isHost}
               messages={messages}
               inputMessage={inputMessage}
               setInputMessage={setInputMessage}
@@ -174,7 +173,6 @@ const HostRoom = () => {
             {modalType === "participants" && <Participants />}
             {modalType === "chat" && (
               <ChatRoom
-                isHost={isHost}
                 messages={messages}
                 peerId={null}
                 inputMessage={inputMessage}

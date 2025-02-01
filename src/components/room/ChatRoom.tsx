@@ -8,7 +8,6 @@ interface Message {
   peerId: string | null;
 }
 interface ChatRoomProps {
-  isHost: boolean;
     messages: Message[];
     inputMessage: string;
     setInputMessage: React.Dispatch<React.SetStateAction<string>>;
@@ -18,7 +17,6 @@ interface ChatRoomProps {
 
 
 const ChatRoom = ({
-  isHost,
   messages,
   inputMessage,
   peerId,
