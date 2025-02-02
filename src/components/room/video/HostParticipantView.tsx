@@ -17,13 +17,14 @@ const HostParticipantView = ({className}:HostParticipantViewProps) => {
           className=""
           videoStyle="rounded-lg h-full"
           stream={hostStream}
+          muted={false}
         />
       </div>
       <div className="relative m-1 border border-charcoal-2 rounded-lg">
         <div className="absolute top-2 left-2 bg-charcoal-7 text-sm font-mono px-1 rounded-lg opacity-85">
           {peerName || "You"}
         </div>
-        <VideoDisplay videoStyle="rounded-lg h-full" stream={peerStream} />
+        <VideoDisplay videoStyle="rounded-lg h-full" muted={true} stream={peerStream} />
       </div>
     </div>
   );

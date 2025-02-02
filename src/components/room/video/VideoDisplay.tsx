@@ -6,9 +6,10 @@ interface VideoDisplayProps {
   className?: string;
   videoStyle?: string;
   key?: string | number;
+  muted: boolean;
 }
 
-const VideoDisplay = memo(({key, className,videoStyle, stream, onDoubleClick }: VideoDisplayProps) => {
+const VideoDisplay = memo(({key, className,videoStyle, stream, onDoubleClick, muted }: VideoDisplayProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     if (stream && videoRef.current) {
@@ -21,7 +22,7 @@ const VideoDisplay = memo(({key, className,videoStyle, stream, onDoubleClick }: 
       <video
         className={videoStyle}
         ref={videoRef}
-        muted
+        muted={muted}
         autoPlay
         playsInline
       />

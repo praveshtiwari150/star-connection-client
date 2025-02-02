@@ -117,6 +117,7 @@ const HostRoom = () => {
         <VideoDisplay
           className="flex-1 bg-charcoal-7 border border-charcoal-4 w-full px-2 h-full lg:h-full rounded-lg overflow-hidden"
           videoStyle="w-full h-full object-fit"
+          muted={true}
           stream={hostStream}
         />
         {isScreenSharingEnabled && (

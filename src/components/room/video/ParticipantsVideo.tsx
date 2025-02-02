@@ -53,7 +53,6 @@ const ParticipantsVideo = ({ participants }: ParticipantsVideoProps) => {
                               );
                           }
                         }}
-                        muted
                       />
                     ) : (
                       <div className="flex items-center justify-center w-full h-full text-sm bg-charcoal-5">

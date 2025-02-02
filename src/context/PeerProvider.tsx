@@ -266,6 +266,19 @@ export const PeerProvider = ({ children }: PeerProviderProps) => {
     }
   }, [streams]);
 
+  useEffect(() => {
+    console.log("Updated streams list:");
+    streams.forEach((stream, index) => {
+      console.log(`Stream ${index + 1} (ID: ${stream.id}):`);
+      stream.getTracks().forEach((track) => {
+        console.log(
+          `  - Track ID: ${track.id}, Kind: ${track.kind}, Enabled: ${track.enabled}`
+        );
+      });
+    });
+  }, [streams]);
+
+
 
   useEffect(() => {
     if (!peerSocket) return;
