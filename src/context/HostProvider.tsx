@@ -62,6 +62,7 @@ export const HostProvider = ({ children }: HostProviderProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>("");
   
+  
   const navigate = useNavigate();
 
   const createMeeting = (hostName: string, hostEmail: string) => {

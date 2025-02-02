@@ -4,12 +4,21 @@ import { usePeer } from "../../context/PeerProvider";
 const JoinMeeting = () => {
   const [name, setName] = useState("");
   const [sessionId, setSessionId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { sendJoinRequest } = usePeer();
 
-  const handleJoinMeeting = (event: React.FormEvent) => {
+  const handleJoinMeeting = async (event: React.FormEvent) => {
     event.preventDefault();
-    console.log("Sending request to join meeting");
-    sendJoinRequest(name, sessionId);
+    setIsLoading(true);
+    try {
+      await sendJoinRequest(name, sessionId);
+    }
+    catch (err) {
+      console.error("Error joining meeting:", err);
+    }
+    finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -58,8 +67,9 @@ const JoinMeeting = () => {
       <button
         type="submit"
         className="bg-cobalt-4 w-full px-4 py-2 rounded-lg text-cobalt-1 font-semibold hover:bg-cobalt-5 transition duration-200"
+        disabled={isLoading}
       >
-        Join Meeting
+        {isLoading ? "Joining..." : "Join Meeting"}
       </button>
     </form>
   );

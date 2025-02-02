@@ -8,13 +8,22 @@ interface CreateMeetingProps {
 const CreateMeeting = ({ className }: CreateMeetingProps) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { createMeeting } = useHost();
 
   // Creates meeting
-  const handleCreateMeeting = (event: FormEvent) => {
+  const handleCreateMeeting = async (event: FormEvent) => {
     event.preventDefault();
-    console.log("createMeeting");
-    createMeeting(name, email);
+    setIsLoading(true); 
+
+    try {
+      console.log("createMeeting");
+      await createMeeting(name, email); 
+    } catch (error) {
+      console.error("Error creating meeting:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -61,8 +70,9 @@ const CreateMeeting = ({ className }: CreateMeetingProps) => {
       <button
         type="submit"
         className="bg-cobalt-4 w-full px-4 py-2 rounded-lg text-cobalt-1 font-semibold hover:bg-cobalt-5 transition duration-200"
+        disabled={isLoading}
       >
-        Create Meeting
+        {isLoading ? "Creating Meeting..." : "Create Meeting"}
       </button>
     </form>
   );
